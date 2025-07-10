@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Basic Calendar Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .calendar-container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .day-cell {
+            min-height: 100px;
+            transition: all 0.3s ease;
+        }
+        .day-cell:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .day-number {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        .today {
+            background-color: rgba(59, 130, 246, 0.2);
+        }
+        .month-nav {
+            transition: transform 0.2s;
+        }
+        .month-nav:hover {
+            transform: scale(1.1);
+        }
+        .holiday {
+            background-color: rgba(239, 68, 68, 0.15);
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto py-8">
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-blue-600 mb-2">Basic Calendar Generator</h1>
+            <p class="text-gray-600">A simple calendar application with DSA implementation</p>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-lg p-6 calendar-container">
+            <div class="flex justify-between items-center mb-6">
+                <button id="prev-month" class="month-nav px-4 py-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200">
+                    &lt; Previous
+                </button>
+                <h2 id="current-month-year" class="text-2xl font-bold text-gray-800">January 2023</h2>
+                <button id="next-month" class="month-nav px-4 py-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200">
+                    Next &gt;
+                </button>
+            </div>
+
+            <div class="grid grid-cols-7 gap-1 mb-2">
+                <div class="text-center font-semibold py-2 text-blue-600">Sun</div>
+                <div class="text-center font-semibold py-2">Mon</div>
+                <div class="text-center font-semibold py-2">Tue</div>
+                <div class="text-center font-semibold py-2">Wed</div>
+                <div class="text-center font-semibold py-2">Thu</div>
+                <div class="text-center font-semibold py-2">Fri</div>
+                <div class="text-center font-semibold py-2 text-blue-600">Sat</div>
+            </div>
+
+            <div id="calendar-grid" class="grid grid-cols-7 gap-1"></div>
+
+            <div class="mt-6 flex justify-between items-center">
+                <button id="today-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
+                    Today
+                </button>
+                <div class="text-sm text-gray-500">
+                    <span class="h-3 w-3 inline-block rounded-full bg-blue-200 mr-1"></span>
+                    Today
+                    <span class="h-3 w-3 inline-block rounded-full bg-red-200 ml-3 mr-1"></span>
+                    Holiday
+                </div>
+                <button id="add-event-btn" class="px-4 py-2 bg-green-100 text-green-600 rounded-lg hover:bg-green-200">
+                    Add Event
+                </button>
+            </div>
+        </div>
+
+        <div class="mt-8 bg-white rounded-lg shadow-lg p-6 calendar-container">
+            <h3 class="text-xl font-bold mb-4">Console</h3>
+            <div id="console-output" class="bg-gray-50 p-4 rounded font-mono text-sm h-32 overflow-y-auto"></div>
+            <div class="mt-4 grid grid-cols-2 gap-4">
+                <div>
+                    <h4 class="font-semibold mb-2">DSA Operations</h4>
+                    <div class="flex gap-2">
+                        <button id="dfs-btn" class="px-3 py-1 bg-purple-100 text-purple-600 rounded text-sm hover:bg-purple-200">
+                            DFS Traversal
+                        </button>
+                        <button id="bfs-btn" class="px-3 py-1 bg-purple-100 text-purple-600 rounded text-sm hover:bg-purple-200">
+                            BFS Traversal
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-2">Algorithm Testing</h4>
+                    <div class="flex gap-2">
+                        <button id="is-leap-btn" class="px-3 py-1 bg-blue-100 text-blue-600 rounded text-sm hover:bg-blue-200">
+                            Check Leap Year
+                        </button>
+                        <button id="days-in-month-btn" class="px-3 py-1 bg-blue-100 text-blue-600 rounded text-sm hover:bg-blue-200">
+                            Days in Month
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Current displayed month and year
+        let currentMonth = new Date().getMonth();
+        let currentYear = new Date().getFullYear();
+        
+        // Holiday data structure (Using Map as DSA concept)
+        const holidays = new Map();
+        holidays.set('01-01', 'New Year');
+        holidays.set('02-14', 'Valentine\'s Day');
+        holidays.set('07-04', 'Independence Day');
+        holidays.set('12-25', 'Christmas');
+        
+        // Events data structure (Using Object/Map as DSA concept)
+        const events = new Map();
+        
+        // Stack for undo operations (DSA concept)
+        const undoStack = [];
+        
+        // Graph representation of calendar (Adjacency List - DSA concept)
+        const calendarGraph = {
+            nodes: [],
+            edges: []
+        };
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            updateCalendar();
+            
+            // Event listeners
+            document.getElementById('prev-month').addEventListener('click', () => {
+                currentMonth--;
+                if (currentMonth < 0) {
+                    currentMonth = 11;
+                    currentYear--;
+                }
+                updateCalendar();
+            });
+            
+            document.getElementById('next-month').addEventListener('click', () => {
+                currentMonth++;
+                if (currentMonth > 11) {
+                    currentMonth = 0;
+                    currentYear++;
+                }
+                updateCalendar();
+            });
+            
+            document.getElementById('today-btn').addEventListener('click', () => {
+                const today = new Date();
+                currentMonth = today.getMonth();
+                currentYear = today.getFullYear();
+                updateCalendar();
+                
+                // Highlight today's cell
+                setTimeout(() => {
+                    const todayCell = document.querySelector(`[data-date="${today.getDate()}"][data-month="${today.getMonth()}"][data-year="${today.getFullYear()}"]`);
+                    if (todayCell) {
+                        todayCell.classList.add('today');
+                        todayCell.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 100);
+            });
+            
+            document.getElementById('add-event-btn').addEventListener('click', () => {
+                const date = prompt('Enter date (DD-MM-YYYY):');
+                if (date) {
+                    const eventName = prompt('Enter event name:');
+                    if (eventName) {
+                        addEvent(date, eventName);
+                    }
+                }
+            });
+            
+            document.getElementById('dfs-btn').addEventListener('click', () => {
+                logToConsole('Starting DFS Traversal...');
+                logToConsole('Graph Nodes: ' + calendarGraph.nodes.join(', '));
+                logToConsole('Graph Edges: ' + calendarGraph.edges.map(e => `${e.from}->${e.to}`).join(', '));
+                logToConsole('DFS result: ' + performDFS(calendarGraph));
+            });
+            
+            document.getElementById('bfs-btn').addEventListener('click', () => {
+                logToConsole('Starting BFS Traversal...');
+                logToConsole('Graph Nodes: ' + calendarGraph.nodes.join(', '));
+                logToConsole('Graph Edges: ' + calendarGraph.edges.map(e => `${e.from}->${e.to}`).join(', '));
+                logToConsole('BFS result: ' + performBFS(calendarGraph));
+            });
+            
+            document.getElementById('is-leap-btn').addEventListener('click', () => {
+                logToConsole(`Is ${currentYear} a leap year? ${isLeapYear(currentYear) ? 'Yes' : 'No'}`);
+            });
+            
+            document.getElementById('days-in-month-btn').addEventListener('click', () => {
+                logToConsole(`Days in ${monthNames[currentMonth]} ${currentYear}: ${getDaysInMonth(currentMonth, currentYear)}`);
+            });
+        });
+        
+        const monthNames = ["January", "February", "March", "April", "May", "June",
+                           "July", "August", "September", "October", "November", "December"];
+        
+        // Update calendar display
+        function updateCalendar() {
+            document.getElementById('current-month-year').textContent = 
+                `${monthNames[currentMonth]} ${currentYear}`;
+            
+            const daysInMonth = getDaysInMonth(currentMonth, currentYear);
+            const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
+            
+            const calendarGrid = document.getElementById('calendar-grid');
+            calendarGrid.innerHTML = '';
+            
+            // Reset graph for the current month (DSA concept)
+            calendarGraph.nodes = [];
+            calendarGraph.edges = [];
+            
+            // Add empty cells for days before first day of month
+            for (let i = 0; i < firstDayOfMonth; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.className = 'day-cell bg-gray-50 rounded';
+                calendarGrid.appendChild(emptyCell);
+                
+                // Add to graph (DSA concept)
+                calendarGraph.nodes.push(`empty-${i}`);
+            }
+            
+            // Add cells for each day of the month
+            const today = new Date();
+            for (let day = 1; day <= daysInMonth; day++) {
+                const cell = document.createElement('div');
+                cell.className = 'day-cell bg-white border rounded py-2 px-1 cursor-pointer';
+                cell.dataset.date = day;
+                cell.dataset.month = currentMonth;
+                cell.dataset.year = currentYear;
+                
+                const dayNumber = document.createElement('div');
+                dayNumber.className = 'day-number text-right pr-1';
+                dayNumber.textContent = day;
+                cell.appendChild(dayNumber);
+                
+                // Add to graph (DSA concept)
+                const nodeId = `${currentYear}-${currentMonth+1}-${day}`;
+                calendarGraph.nodes.push(nodeId);
+                
+                // Add edges to previous day (if exists)
+                if (day > 1) {
+                    calendarGraph.edges.push({
+                        from: `${currentYear}-${currentMonth+1}-${day-1}`,
+                        to: nodeId
+                    });
+                }
+                
+                // Check if today
+                if (day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear()) {
+                    cell.classList.add('today');
+                }
+                
+                // Check if holiday
+                const monthStr = (currentMonth + 1).toString().padStart(2, '0');
+                const dayStr = day.toString().padStart(2, '0');
+                if (holidays.has(`${monthStr}-${dayStr}`)) {
+                    cell.classList.add('holiday');
+                    const holidayText = document.createElement('div');
+                    holidayText.className = 'text-xs text-red-500 truncate text-center mt-1';
+                    holidayText.textContent = holidays.get(`${monthStr}-${dayStr}`);
+                    cell.appendChild(holidayText);
+                }
+                
+                // Check for events
+                const dateKey = `${dayStr}-${monthStr}-${currentYear}`;
+                if (events.has(dateKey)) {
+                    const eventText = document.createElement('div');
+                    eventText.className = 'text-xs text-green-600 truncate text-center mt-1';
+                    eventText.textContent = events.get(dateKey);
+                    cell.appendChild(eventText);
+                }
+                
+                calendarGrid.appendChild(cell);
+                
+                cell.addEventListener('click', () => {
+                    const monthStr = (currentMonth + 1).toString().padStart(2, '0');
+                    const dayStr = day.toString().padStart(2, '0');
+                    const eventText = events.get(`${dayStr}-${monthStr}-${currentYear}`);
+                    logToConsole(`Clicked on ${monthNames[currentMonth]} ${day}, ${currentYear}` + 
+                                (eventText ? ` - Event: ${eventText}` : '') +
+                                (holidays.has(`${monthStr}-${dayStr}`) ? ` - Holiday: ${holidays.get(`${monthStr}-${dayStr}`)}` : ''));
+                });
+            }
+        }
+        
+        // Add event to calendar (DSA concept - Map operation)
+        function addEvent(date, eventName) {
+            events.set(date, eventName);
+            undoStack.push({ type: 'add_event', date });
+            updateCalendar();
+            logToConsole(`Added event "${eventName}" on ${date}`);
+        }
+        
+        // DSA implementations
+        function performDFS(graph, startNode = null) {
+            const visited = new Set();
+            const result = [];
+            const stack = [];
+            
+            startNode = startNode || graph.nodes[0];
+            
+            stack.push(startNode);
+            
+            while (stack.length > 0) {
+                const node = stack.pop();
+                
+                if (!visited.has(node)) {
+                    visited.add(node);
+                    result.push(node);
+                    
+                    const neighbors = graph.edges
+                        .filter(edge => edge.from === node)
+                        .map(edge => edge.to);
+                    
+                    for (let neighbor of neighbors.reverse()) {
+                        stack.push(neighbor);
+                    }
+                }
+            }
+            
+            return result.join(' → ');
+        }
+        
+        function performBFS(graph, startNode = null) {
+            const visited = new Set();
+            const result = [];
+            const queue = [];
+            
+            startNode = startNode || graph.nodes[0];
+            
+            visited.add(startNode);
+            queue.push(startNode);
+            
+            while (queue.length > 0) {
+                const node = queue.shift();
+                result.push(node);
+                
+                const neighbors = graph.edges
+                    .filter(edge => edge.from === node)
+                    .map(edge => edge.to);
+                
+                for (let neighbor of neighbors) {
+                    if (!visited.has(neighbor)) {
+                        visited.add(neighbor);
+                        queue.push(neighbor);
+                    }
+                }
+            }
+            
+            return result.join(' → ');
+        }
+        
+        function isLeapYear(year) {
+            return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+        }
+        
+        function getDaysInMonth(month, year) {
+            // Using Date object for simplicity, but this could be implemented with arrays as a DSA exercise
+            return new Date(year, month + 1, 0).getDate();
+        }
+        
+        function logToConsole(message) {
+            const consoleOutput = document.getElementById('console-output');
+            const entry = document.createElement('div');
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            consoleOutput.appendChild(entry);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+    </script>
+</body>
+</html>
